@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -8,7 +9,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: "Poppins", sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
@@ -22,5 +23,166 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Poppins", sans-serif;
 }
+
+.control-group {
+  overflow: hidden;
+  border: 1px solid #2a3140;
+  border-radius: 16px;
+  background: rgba(22, 27, 34, 0.72);
+}
+
+.control-group > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 13px 15px;
+  color: #e6edf3;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.control-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.control-group > summary::after {
+  float: right;
+  color: #f4c95d;
+  content: "+";
+  font-size: 18px;
+  line-height: 1;
+}
+
+.control-group[open] > summary {
+  border-bottom: 1px solid #2a3140;
+  background: rgba(244, 201, 93, 0.06);
+}
+
+.control-group[open] > summary::after {
+  content: "−";
+}
+
+.control-group > section {
+  padding: 14px;
+}
+
+.select-shell {
+  position: relative;
+}
+
+.select-shell::after {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  color: #f4c95d;
+  content: "⌄";
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-55%);
+}
+
+.custom-select::after {
+  display: none;
+}
+
+.select-control {
+  min-height: 42px;
+  appearance: none;
+  padding-right: 38px;
+  font-family: "Poppins", sans-serif;
+  font-weight: 500;
+}
+
+.custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding-right: 9px;
+  text-align: left;
+}
+
+.custom-select-trigger:disabled {
+  cursor: not-allowed;
+}
+
+.custom-select-chevron {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  color: #f4c95d;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateY(-3px);
+  transition: transform 150ms ease;
+}
+
+.custom-select.is-open .custom-select-chevron {
+  transform: translateY(-3px) rotate(180deg);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 40;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #394255;
+  border-radius: 12px;
+  background: #161b22;
+  padding: 5px;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+  scrollbar-color: #000000 #161b22;
+  scrollbar-width: thin;
+}
+
+.custom-select-menu::-webkit-scrollbar {
+  width: 7px;
+}
+
+.custom-select-menu::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: #161b22;
+}
+
+.custom-select-menu::-webkit-scrollbar-thumb {
+  border: 2px solid #161b22;
+  border-radius: 999px;
+  background: #000000;
+}
+
+.custom-select-menu::-webkit-scrollbar-thumb:hover {
+  background: #2a3140;
+}
+
+.custom-select-option {
+  display: block;
+  width: 100%;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #e6edf3;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  text-align: left;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.custom-select-option:hover,
+.custom-select-option.is-selected {
+  background: rgba(244, 201, 93, 0.14);
+  color: #f4c95d;
+}
+
+.select-control option {
+  background: #161b22;
+  color: #e6edf3;
+}
+
