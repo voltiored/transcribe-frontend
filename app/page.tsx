@@ -8,7 +8,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 const MAX_UPLOAD_BYTES = 1200 * 1024 * 1024;
-const UPLOAD_CHUNK_BYTES = 15 * 1024 * 1024;
+const UPLOAD_CHUNK_BYTES = 75 * 1024 * 1024;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -562,7 +562,7 @@ export default function Page() {
     setTranscribing(true);
     setTranscriptionProgress(2);
     setTranscriptionStage("Preparando la subida...");
-    setTranscriptionEta(Math.max(30, Math.round(file.size / (1024 * 1024) * 1.5)));
+    setTranscriptionEta(Math.max(30, Math.round(file.size / (1024 * 1024) * 0.8)));
     let progressTimer: ReturnType<typeof setInterval> | undefined;
     try {
       const init = new FormData();
@@ -603,7 +603,7 @@ export default function Page() {
       if (translateTo) transcription.append("translate_to", translateTo);
       setTranscriptionStage("Transcribiendo audio...");
       setTranscriptionProgress(52);
-      const estimatedSeconds = Math.max(30, Math.round(file.size / (1024 * 1024) * 1.5));
+      const estimatedSeconds = Math.max(30, Math.round(file.size / (1024 * 1024) * 0.8));
       const transcriptionStartedAt = Date.now();
       progressTimer = setInterval(() => {
         const elapsed = (Date.now() - transcriptionStartedAt) / 1000;
