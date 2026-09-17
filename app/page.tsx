@@ -498,17 +498,23 @@ export default function Page() {
 
   async function api(path: string, opts: RequestInit = {}) {
   const token = session?.access_token ?? "";
-  let res: Response;
-  try {
-    res = await fetch(`${BACKEND_URL}${path}`, {
-      ...opts,
-      headers: {
-        ...(opts.headers ?? {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-  } catch {
-    throw new Error(`No se puede conectar con el backend (${BACKEND_URL}). Comprueba que FastAPI esté iniciado y que NEXT_PUBLIC_BACKEND_URL sea accesible desde este dispositivo.`);
+  let res: Response | undefined;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      res = await fetch(`${BACKEND_URL}${path}`, {
+        ...opts,
+        headers: {
+          ...(opts.headers ?? {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      break;
+    } catch {
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+  }
+  if (!res) {
+    throw new Error(`No se puede conectar con el backend (${BACKEND_URL}). La conexión falló después de 3 intentos. Comprueba que FastAPI y cloudflared estén iniciados.`);
   }
   if (!res.ok) {
     const text = await res.text();
