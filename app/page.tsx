@@ -107,6 +107,11 @@ function fmtTime(t: number): string {
   return `${h}:${String(m).padStart(2, "0")}:${s.toFixed(2).padStart(5, "0")}`;
 }
 
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} s`;
+  return `${Math.floor(seconds / 60)} min`;
+}
+
 function redistributeWords(block: Block, newText: string): Block {
   const toks = newText.split(/\s+/).filter(Boolean);
   const dur = Math.max(0.001, block.end - block.start);
@@ -423,6 +428,9 @@ export default function Page() {
   const [videoId, setVideoId] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [transcribing, setTranscribing] = useState(false);
+  const [transcriptionProgress, setTranscriptionProgress] = useState(0);
+  const [transcriptionStage, setTranscriptionStage] = useState("");
+  const [transcriptionEta, setTranscriptionEta] = useState(0);
   const [previewing, setPreviewing] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -522,6 +530,9 @@ export default function Page() {
     setPreviewUrl("");
     setResultUrl("");
     setEngineInfo("");
+    setTranscriptionProgress(0);
+    setTranscriptionStage("");
+    setTranscriptionEta(0);
   }
 
   function onFile(f: File | null) {
@@ -543,6 +554,10 @@ export default function Page() {
     setError("");
     if (!file) return;
     setTranscribing(true);
+    setTranscriptionProgress(2);
+    setTranscriptionStage("Preparando la subida...");
+    setTranscriptionEta(Math.max(30, Math.round(file.size / (1024 * 1024) * 1.5)));
+    let progressTimer: ReturnType<typeof setInterval> | undefined;
     try {
       const init = new FormData();
       init.append("filename", file.name);
@@ -551,6 +566,8 @@ export default function Page() {
       const { video_id: uploadedVideoId } = await initRes.json() as { video_id: string };
       const totalChunks = Math.ceil(file.size / UPLOAD_CHUNK_BYTES);
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+        setTranscriptionStage(`Subiendo vídeo (${chunkIndex + 1}/${totalChunks})...`);
+        setTranscriptionProgress(5 + Math.round(((chunkIndex + 1) / totalChunks) * 40));
         const chunk = file.slice(chunkIndex * UPLOAD_CHUNK_BYTES, (chunkIndex + 1) * UPLOAD_CHUNK_BYTES);
         const chunkForm = new FormData();
         chunkForm.append("chunk", chunk, file.name);
@@ -564,6 +581,8 @@ export default function Page() {
       complete.append("video_id", uploadedVideoId);
       complete.append("total_chunks", String(totalChunks));
       complete.append("user_id", userId);
+      setTranscriptionStage("Uniendo fragmentos...");
+      setTranscriptionProgress(48);
       await api("/upload/complete", { method: "POST", body: complete });
 
       const transcription = new FormData();
@@ -576,16 +595,33 @@ export default function Page() {
       transcription.append("emphasis_engine", emphasisEngine);
       transcription.append("engine", engine);
       if (translateTo) transcription.append("translate_to", translateTo);
+      setTranscriptionStage("Transcribiendo audio...");
+      setTranscriptionProgress(52);
+      const estimatedSeconds = Math.max(30, Math.round(file.size / (1024 * 1024) * 1.5));
+      const transcriptionStartedAt = Date.now();
+      progressTimer = setInterval(() => {
+        const elapsed = (Date.now() - transcriptionStartedAt) / 1000;
+        const ratio = Math.min(0.95, elapsed / estimatedSeconds);
+        setTranscriptionProgress(52 + Math.round(ratio * 40));
+        setTranscriptionEta(Math.max(1, Math.round(estimatedSeconds - elapsed)));
+      }, 1000);
       const res = await api("/transcribe", { method: "POST", body: transcription });
       const data = await res.json();
+      setTranscriptionProgress(100);
+      setTranscriptionStage("Transcripción completada");
+      setTranscriptionEta(0);
       setVideoId(data.video_id);
       setBlocks(data.blocks);
       setEngineInfo(data.engine);
       setPreviewUrl("");
       setResultUrl("");
     } catch (e) {
+      setTranscriptionProgress(0);
+      setTranscriptionStage("");
+      setTranscriptionEta(0);
       setError(e instanceof Error ? e.message : "Error transcribiendo");
     } finally {
+      if (progressTimer) clearInterval(progressTimer);
       setTranscribing(false);
     }
   }
@@ -786,6 +822,18 @@ export default function Page() {
             <button className={`${btnPrimary} mt-3`} disabled={!file || transcribing} onClick={doTranscribe}>
               {transcribing ? "Transcribiendo... (puede tardar)" : "Transcribir"}
             </button>
+            {(transcribing || transcriptionProgress === 100) && <div className="mt-3 rounded-xl border border-[#2A3140] bg-[#161B22] p-3" role="status" aria-live="polite">
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                <span className="font-semibold text-[#E6EDF3]">{transcriptionStage}</span>
+                <span className="font-mono text-[#F4C95D]">{transcriptionProgress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[#2A3140]" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={transcriptionProgress}>
+                <div className="h-full rounded-full bg-[#F4C95D] transition-[width] duration-500" style={{ width: `${transcriptionProgress}%` }} />
+              </div>
+              {transcribing && <p className="mt-2 text-[11px] text-[#8B949E]">
+                Tiempo restante aproximado: {transcriptionEta > 0 ? formatDuration(transcriptionEta) : "calculando..."}
+              </p>}
+            </div>}
             {engineInfo && <p className="mt-2 text-center text-[11px] text-[#8B949E]">Motor: {engineInfo}</p>}
           </section>
 
