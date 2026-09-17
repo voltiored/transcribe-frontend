@@ -7,6 +7,8 @@ import type { Session } from "@supabase/supabase-js";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const MAX_UPLOAD_BYTES = 1200 * 1024 * 1024;
+const UPLOAD_CHUNK_BYTES = 15 * 1024 * 1024;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -488,13 +490,18 @@ export default function Page() {
 
   async function api(path: string, opts: RequestInit = {}) {
   const token = session?.access_token ?? "";
-  const res = await fetch(`${BACKEND_URL}${path}`, {
-    ...opts,
-    headers: {
-      ...(opts.headers ?? {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BACKEND_URL}${path}`, {
+      ...opts,
+      headers: {
+        ...(opts.headers ?? {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  } catch {
+    throw new Error(`No se puede conectar con el backend (${BACKEND_URL}). Comprueba que FastAPI esté iniciado y que NEXT_PUBLIC_BACKEND_URL sea accesible desde este dispositivo.`);
+  }
   if (!res.ok) {
     const text = await res.text();
     let message = text || `Error ${res.status}`;
@@ -519,7 +526,7 @@ export default function Page() {
 
   function onFile(f: File | null) {
     if (!f) return;
-    if (f.size > 1200 * 1024 * 1024) {
+    if (f.size > MAX_UPLOAD_BYTES) {
       setError("El vídeo supera 1200 MB");
       return;
     }
@@ -537,17 +544,39 @@ export default function Page() {
     if (!file) return;
     setTranscribing(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("user_id", userId);
-      fd.append("language", language);
-      fd.append("words_per_block", String(wordsPerBlock));
-      fd.append("strip_punctuation", String(stripPunct));
-      fd.append("emphasis", String(emphasis));
-      fd.append("emphasis_engine", emphasisEngine);
-      fd.append("engine", engine);
-      if (translateTo) fd.append("translate_to", translateTo);
-      const res = await api("/transcribe", { method: "POST", body: fd });
+      const init = new FormData();
+      init.append("filename", file.name);
+      init.append("user_id", userId);
+      const initRes = await api("/upload/init", { method: "POST", body: init });
+      const { video_id: uploadedVideoId } = await initRes.json() as { video_id: string };
+      const totalChunks = Math.ceil(file.size / UPLOAD_CHUNK_BYTES);
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+        const chunk = file.slice(chunkIndex * UPLOAD_CHUNK_BYTES, (chunkIndex + 1) * UPLOAD_CHUNK_BYTES);
+        const chunkForm = new FormData();
+        chunkForm.append("chunk", chunk, file.name);
+        chunkForm.append("video_id", uploadedVideoId);
+        chunkForm.append("chunk_index", String(chunkIndex));
+        chunkForm.append("total_chunks", String(totalChunks));
+        chunkForm.append("user_id", userId);
+        await api("/upload/chunk", { method: "POST", body: chunkForm });
+      }
+      const complete = new FormData();
+      complete.append("video_id", uploadedVideoId);
+      complete.append("total_chunks", String(totalChunks));
+      complete.append("user_id", userId);
+      await api("/upload/complete", { method: "POST", body: complete });
+
+      const transcription = new FormData();
+      transcription.append("video_id", uploadedVideoId);
+      transcription.append("user_id", userId);
+      transcription.append("language", language);
+      transcription.append("words_per_block", String(wordsPerBlock));
+      transcription.append("strip_punctuation", String(stripPunct));
+      transcription.append("emphasis", String(emphasis));
+      transcription.append("emphasis_engine", emphasisEngine);
+      transcription.append("engine", engine);
+      if (translateTo) transcription.append("translate_to", translateTo);
+      const res = await api("/transcribe", { method: "POST", body: transcription });
       const data = await res.json();
       setVideoId(data.video_id);
       setBlocks(data.blocks);
