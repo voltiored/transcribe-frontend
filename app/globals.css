@@ -33,6 +33,10 @@ body {
   background: rgba(22, 27, 34, 0.72);
 }
 
+.control-group + .control-group {
+  margin-top: 20px;
+}
+
 .control-group > summary {
   cursor: pointer;
   list-style: none;

@@ -957,7 +957,7 @@ export default function Page() {
           )}
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-5 pb-5">
           <details className="control-group" open>
             <summary>Estilo de subtítulos</summary>
           <section>
