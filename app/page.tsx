@@ -448,7 +448,7 @@ export default function Page() {
   const [wordsPerBlock, setWordsPerBlock] = useState(3);
   const [engine, setEngine] = useState("auto");
   const [stripPunct, setStripPunct] = useState(false);
-  const [emphasis, setEmphasis] = useState(true);
+  const [emphasis, setEmphasis] = useState(false);
   const [emphasisEngine, setEmphasisEngine] = useState("auto");
   const [translateTo, setTranslateTo] = useState("");
 
